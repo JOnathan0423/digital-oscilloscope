@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дижитал Осциллограф DS 1080 - Сайжруулсан</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            padding: 20px;
+        }
+        .oscilloscope {
+            background-color: #222;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+        h1 {
+            text-align: center;
+        }
+        .oscilloscope-display {
+            width: 100%;
+            height: 300px;
+            background-color: #333;
+            border: 1px solid #555;
+            position: relative;
+            overflow: hidden;
+        }
+        .label {
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .measurement {
+            margin-left: 20px;
+            color: #5aaf5a;
+        }
+        .input {
+            margin-left: 20px;
+            color: #ff6f61;
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        .control-label {
+            font-size: 14px;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .control-input {
+            padding: 5px;
+            margin: 10px 0;
+            color: #222;
+            font-size: 14px;
+        }
+        .control-input select,
+        .control-input input {
+            background-color: #444;
+            border: none;
+            color: white;
+        }
+        .input-info {
+            font-size: 12px;
+            color: #ccc;
+            margin-left: 10px;
+            display: inline-block;
+        }
+        .grid {
+            stroke: rgba(255, 255, 255, 0.2);
+            stroke-width: 0.5;
+        }
+        .fft {
+            width: 100%;
+            height: 150px;
+            background-color: #222;
+            border: 1px solid #555;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DS 1080 Дижитал Осциллограф</h1>
+        <div class="oscilloscope">
+            <div class="oscilloscope-display" id="oscilloscope-display">
+                <canvas id="oscilloscope-canvas" width="640" height="300"></canvas>
+            </div>
+
+            <div class="controls">
+                <div class="control-label">Чанел 1: Давтамж (МГц)</div>
+                <div class="control-input">
+                    <input type="number" id="freq-ch1" value="1" step="0.1" min="0.1" max="80">
+                    <span class="input-info">(Чанел 1-ийн давтамжийг тохируулах)</span>
+                </div>
+
+                <div class="control-label">Чанел 2: Давтамж (МГц)</div>
+                <div class="control-input">
+                    <input type="number" id="freq-ch2" value="1" step="0.1" min="0.1" max="80">
+                    <span class="input-info">(Чанел 2-ийн давтамжийг тохируулах)</span>
+                </div>
+
+                <div class="control-label">Амплитуд (V)</div>
+                <div class="control-input">
+                    <input type="number" id="amplitude" value="1" step="0.1" min="0.1" max="10">
+                    <span class="input-info">(Сигналын хамгийн их далайцыг тохируулах)</span>
+                </div>
+
+                <div class="control-label">Фазын шилжилт (градус)</div>
+                <div class="control-input">
+                    <input type="number" id="phase-shift" value="0" step="1" min="0" max="360">
+                    <span class="input-info">(Сигналын фазын шилжилтийг тохируулах)</span>
+                </div>
+
+                <div class="control-label">Долгионы төрөл</div>
+                <div class="control-input">
+                    <select id="waveform-type">
+                        <option value="sine">Синус</option>
+                        <option value="square">Квадрат</option>
+                        <option value="triangle">Төрөлт</option>
+                    </select>
+                    <span class="input-info">(Үүсгэх долгионы төрлийг сонгох)</span>
+                </div>
+
+                <div class="control-label">Duty Cycle (%)</div>
+                <div class="control-input">
+                    <input type="number" id="duty-cycle" value="50" step="1" min="1" max="99">
+                    <span class="input-info">(Квадрат долгионы үүргийн цикл)</span>
+                </div>
+
+                <div class="control-label">Цаг/Багц (мс)</div>
+                <div class="control-input">
+                    <input type="number" id="time-div" value="10" step="1" min="1" max="100">
+                    <span class="input-info">(Сигналын дэлгэцийн нэгж хугацааг тохируулах)</span>
+                </div>
+
+                <div class="control-label">Давтамжийн хувь (ГСа/с)</div>
+                <div class="control-input">
+                    <input type="number" id="sample-rate" value="1" step="0.1" min="0.1" max="2">
+                    <span class="input-info">(Гига дээж/секундээр дээж авах хурдыг тохируулах)</span>
+                </div>
+
+                <div class="control-label">Триггерийн түвшин</div>
+                <div class="control-input">
+                    <input type="number" id="trigger-level" value="0" step="0.1" min="-5" max="5">
+                    <span class="input-info">(Триггерийн түвшинг вольтоор тохируулах)</span>
+                </div>
+
+                <div class="control-label">Зураг томруулах/жижигрүүлэх</div>
+                <div class="control-input">
+                    <input type="range" id="zoom" min="1" max="5" value="1" step="0.1">
+                    <span class="input-info">(Дэлгэцийн томруулалтыг тохируулах)</span>
+                </div>
+                <div class="control-label">Зураг шилжүүлэх (Тэмдэглэл)</div>
+                <div class="control-input">
+                    <input type="range" id="pan" min="-100" max="100" value="0" step="1">
+                    <span class="input-info">(Үзэгдлийг зүүн эсвэл баруун тийш шилжүүлэх)</span>
+                </div>
+
+                <div class="control-label">FFT График</div>
+                <div class="control-input">
+                    <input type="checkbox" id="fft-mode"> FFT Харуулах
+                    <span class="input-info">(FFT анализ горимыг идэвхжүүлэх эсвэл идэвхгүй болгох)</span>
+                </div>
+            </div>
+
+            <div class="measurement-info">
+                <div class="label">** Хэмжилтүүд **</div>
+                <div class="measurement">Давтамж (Ч1): <span id="freq-ch1-output">1 МГц</span></div>
+                <div class="measurement">Давтамж (Ч2): <span id="freq-ch2-output">1 МГц</span></div>
+                <div class="measurement">Цаг/Багц: <span id="time-div-output">10 мс</span></div>
+                <div class="measurement">Давтамжийн хувь: <span id="sample-rate-output">1 ГСа/с</span></div>
+                <div class="measurement">Триггерийн түвшин: <span id="trigger-level-output">0 V</span></div>
+                <div class="measurement">Долгионы төрөл: <span id="waveform-type-output">Синус</span></div>
+                <div class="measurement">Амплитуд: <span id="amplitude-output">1 V</span></div>
+                <div class="measurement">Фазын шилжилт: <span id="phase-shift-output">0°</span></div>
+                <div class="measurement">Duty Cycle: <span id="duty-cycle-output">50%</span></div>
+            </div>
+            <div class="fft" id="fft-display">
+                <canvas id="fft-canvas" width="640" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('oscilloscope-canvas');
+        const ctx = canvas.getContext('2d');
+        const fftCanvas = document.getElementById('fft-canvas');
+        const fftCtx = fftCanvas.getContext('2d');
+
+        let freqCh1 = 1;  // Чанел 1-ийн давтамж (МГц)
+        let freqCh2 = 1;  // Чанел 2-ийн давтамж (МГц)
+        let amplitude = 1; // Амплитуд (V)
+        let phaseShift = 0; // Фазын шилжилт (градус)
+        let dutyCycle = 50; // Duty Cycle (%)
+        let timeDiv = 10; // Цаг/Багц (мс)
+        let sampleRate = 1; // Дээж авах хурд (ГСа/с)
+        let triggerLevel = 0; // Триггерийн түвшин (V)
+        let waveformType = 'sine'; // Долгионы төрөл (синус, квадрат, төрөлт)
+        let zoom = 1; // Томруулалтын түвшин
+        let pan = 0; // Тэмдэглэлийн шилжүүлэг
+        let canvasWidth = canvas.width;
+        let canvasHeight = canvas.height;
+        let timePerSample = 0;
+
+        // Дэлгэцийг шинэчлэх функц
+        const updateDisplay = () => {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            timePerSample = (timeDiv / 1000) / canvasWidth;
+            drawGrid();
+            drawWaveforms();
+            updateMeasurements();
+            if (document.getElementById('fft-mode').checked) {
+                drawFFT();
+            }
+        };
+
+        // Сүлжээг зурж үзүүлэх функц
+        const drawGrid = () => {
+            ctx.beginPath();
+            for (let i = 0; i < canvasWidth; i += 50) {
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvasHeight);
+            }
+            for (let i = 0; i < canvasHeight; i += 50) {
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvasWidth, i);
+            }
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+        };
+
+        // Долгионыг зурж үзүүлэх функц
+        const drawWaveforms = () => {
+            const midY = canvasHeight / 2;
+            drawWave(freqCh1, 0, midY - 50, amplitude, phaseShift, dutyCycle); // Чанел 1
+            drawWave(freqCh2, Math.PI / 2, midY + 50, amplitude, phaseShift, dutyCycle); // Чанел 2
+        };
+
+        // Долгионы төрлийг зурж үзүүлэх функц
+        const drawWave = (freq, phase, offset, amplitude, phaseShiftDeg, dutyCycle) => {
+            ctx.beginPath();
+            const phaseShiftRad = (phaseShiftDeg * Math.PI) / 180;
+            for (let x = 0; x < canvasWidth; x++) {
+                let time = x * timePerSample;
+                let y;
+                if (waveformType === 'sine') {
+                    y = Math.sin(2 * Math.PI * freq * time + phaseShiftRad) * amplitude * 50 + offset;
+                } else if (waveformType === 'square') {
+                    y = Math.sign(Math.sin(2 * Math.PI * freq * time + phaseShiftRad)) * amplitude * 50 * (Math.random() < dutyCycle / 100 ? 1 : 0) + offset;
+                } else if (waveformType === 'triangle') {
+                    y = 2 * Math.abs(2 * (time * freq % 1) - 1) - 1;
+                    y = y * amplitude * 50 + offset;
+                }
+                if (x === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        };
+
+        // FFT графикыг харуулах функц
+        const drawFFT = () => {
+            const signal = generateSignal(freqCh1, waveformType);
+            const fftData = computeFFT(signal);
+            fftCtx.clearRect(0, 0, fftCanvas.width, fftCanvas.height);
+            drawFFTBars(fftData);
+        };
+
+        // FFT өгөгдлийг тооцоолох функц
+        const computeFFT = (signal) => {
+            let N = signal.length;
+            let fft = new Array(N);
+            for (let i = 0; i < N; i++) {
+                fft[i] = Math.abs(signal[i]);
+            }
+            return fft;
+        };
+
+        // FFT-г баар болгон үзүүлэх функц
+        const drawFFTBars = (data) => {
+            let barWidth = fftCanvas.width / data.length;
+            for (let i = 0; i < data.length; i++) {
+                fftCtx.fillStyle = 'rgba(255, 255, 0, 0.7)';
+                fftCtx.fillRect(i * barWidth, fftCanvas.height - data[i], barWidth, data[i]);
+            }
+        };
+
+        // Сигнал үүсгэх функц
+        const generateSignal = (frequency, type) => {
+            let signal = [];
+            for (let i = 0; i < canvasWidth; i++) {
+                let t = i * timePerSample;
+                if (type === 'sine') {
+                    signal.push(Math.sin(2 * Math.PI * frequency * t));
+                } else if (type === 'square') {
+                    signal.push(Math.sign(Math.sin(2 * Math.PI * frequency * t)));
+                } else if (type === 'triangle') {
+                    signal.push(2 * Math.abs(2 * (t * frequency % 1) - 1) - 1);
+                }
+            }
+            return signal;
+        };
+
+        // Хэмжилтүүдийг шинэчлэх функц
+        const updateMeasurements = () => {
+            document.getElementById('freq-ch1-output').textContent = freqCh1 + ' МГц';
+            document.getElementById('freq-ch2-output').textContent = freqCh2 + ' МГц';
+            document.getElementById('time-div-output').textContent = timeDiv + ' мс';
+            document.getElementById('sample-rate-output').textContent = sampleRate + ' ГСа/с';
+            document.getElementById('trigger-level-output').textContent = triggerLevel + ' V';
+            document.getElementById('waveform-type-output').textContent = waveformType === 'sine' ? 'Синус' : waveformType === 'square' ? 'Квадрат' : 'Төрөлт';
+            document.getElementById('amplitude-output').textContent = amplitude + ' V';
+            document.getElementById('phase-shift-output').textContent = phaseShift + '°';
+            document.getElementById('duty-cycle-output').textContent = dutyCycle + '%';
+        };
+
+        // Арга хэмжээнүүдийн ашиглалт
+        document.getElementById('freq-ch1').addEventListener('input', (e) => { freqCh1 = parseFloat(e.target.value); updateDisplay(); });
+        document.getElementById('freq-ch2').addEventListener('input', (e) => { freqCh2 = parseFloat(e.target.value); updateDisplay(); });
+        document.getElementById('amplitude').addEventListener('input', (e) => { amplitude = parseFloat(e.target.value); updateDisplay(); });
+        document.getElementById('phase-shift').addEventListener('input', (e) => { phaseShift = parseFloat(e.target.value); updateDisplay(); });
+        document.getElementById('waveform-type').addEventListener('change', (e) => { waveformType = e.target.value; updateDisplay(); });
+        document.getElementById('duty-cycle').addEventListener('input', (e) => { dutyCycle = parseFloat(e.target.value); updateDisplay(); });
+        document.getElementById('time-div').addEventListener('input', (e) => { timeDiv = parseFloat(e.target.value); updateDisplay(); });
+        document.getElementById('sample-rate').addEventListener('input', (e) => { sampleRate = parseFloat(e.target.value); updateDisplay(); });
+        document.getElementById('trigger-level').addEventListener('input', (e) => { triggerLevel = parseFloat(e.target.value); updateDisplay(); });
+        document.getElementById('zoom').addEventListener('input', (e) => { zoom = parseFloat(e.target.value); updateDisplay(); });
+        document.getElementById('pan').addEventListener('input', (e) => { pan = parseFloat(e.target.value); updateDisplay(); });
+
+        updateDisplay();
+    </script>
+</body>
+</html>
